@@ -50,7 +50,7 @@ class World:
         return new_context
 
     def camera(self, cam_id, location, ratio, video_file, metadata_identifier, lens):
-        new_context = self._deep_copy()
+        new_context = self._deep_copy(isNew=True)
         new_context.VideoContext.camera(cam_id, location, ratio, video_file, metadata_identifier, lens)
         return new_context
 
@@ -60,7 +60,7 @@ class World:
         return new_context
 
     def recognize(self, cam_id, algo ='Yolo', tracker_type = 'multi', tracker = None):
-        new_context = self._deep_copy()
+        new_context = self._deep_copy(isNew=True) # As we add new things, we should update the world id
         new_context.VideoContext.camera_nodes[cam_id].recognize(algo, tracker_type, tracker)
         return new_context
 
@@ -173,10 +173,11 @@ class World:
             plt.imshow(frame)
             plt.show()
 
-    def _deep_copy(self):
+    def _deep_copy(self, isNew=False):
         new_context = copy.deepcopy(self)
         # generate new world id for new video context
-        new_context.VideoContext.name = WorldIDGenerator.get_new_id()
+        if isNew:
+            new_context.VideoContext.name = WorldIDGenerator.get_new_id()
         return new_context
         
 class WorldIDGenerator:

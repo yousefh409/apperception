@@ -169,7 +169,7 @@ def recognize(video_file, recog_algo = "", tracker_type = "default", customized_
 	return yolov4_deepsort_video_track(video_file)	
 
 
-def add_recognized_objs(conn, lens, formatted_result, start_time, properties={'color':{}}, default_depth=True):
+def add_recognized_objs(conn, lens, formatted_result, start_time, worldId, properties={'color':{}}, default_depth=True):
 	clean_tables(conn)
 	for item_id in formatted_result:
 		object_type = formatted_result[item_id]["object_type"]
@@ -198,7 +198,7 @@ def add_recognized_objs(conn, lens, formatted_result, start_time, properties={'c
 			current_br = bottom_right[i]
 			obj_traj.append([current_tl.tolist(), current_br.tolist()])      
 		
-		bbox_to_postgres(conn, item_id, object_type, "default_color" if item_id not in properties['color'] else properties['color'][item_id], start_time, tracked_cnt, obj_traj, type="yolov4")
+		bbox_to_postgres(conn, item_id, object_type, "default_color" if item_id not in properties['color'] else properties['color'][item_id], start_time, tracked_cnt, obj_traj, worldId, type="yolov4")
 		# bbox_to_tasm()
 	
 # Helper function to convert the timestam to the timestamp formula pg-trajectory uses
@@ -219,7 +219,7 @@ def bbox_to_data3d(bbox):
 	return center, x_delta, y_delta, z_delta
 
 # Insert bboxes to postgres
-def bbox_to_postgres(conn, item_id, object_type, color, start_time, timestamps, bboxes, type='yolov3'):
+def bbox_to_postgres(conn, item_id, object_type, color, start_time, timestamps, bboxes, worldId, type='yolov3'):
 	if type == 'yolov3':
 		timestamps = range(timestamps)
 
@@ -230,7 +230,7 @@ def bbox_to_postgres(conn, item_id, object_type, color, start_time, timestamps, 
 		pairs.append(meta_box[0])
 		deltas.append(meta_box[1:])
 	postgres_timestamps = convert_timestamps(start_time, timestamps)
-	create_or_insert_general_trajectory(conn, item_id, object_type, color, postgres_timestamps, bboxes, pairs)
+	create_or_insert_general_trajectory(conn, item_id, object_type, color, postgres_timestamps, bboxes, pairs, worldId)
 	print(f"{item_id} saved successfully")
 
 def clean_tables(conn):
@@ -240,7 +240,7 @@ def clean_tables(conn):
 	conn.commit()
 
 # Create general trajectory table
-def create_or_insert_general_trajectory(conn, item_id, object_type, color, postgres_timestamps, bboxes, pairs):
+def create_or_insert_general_trajectory(conn, item_id, object_type, color, postgres_timestamps, bboxes, pairs, worldId):
 	#Creating a cursor object using the cursor() method
 	cursor = conn.cursor()
 	'''
@@ -248,9 +248,11 @@ def create_or_insert_general_trajectory(conn, item_id, object_type, color, postg
 	Now the timestamp matches, the starting time should be the meta data of the world
 	Then the timestamp should be the timestamp regarding the world starting time
 	'''
-	
+	# TODO: add world id
+
 	#Creating table with the first item
 	create_itemtraj_sql ='''CREATE TABLE IF NOT EXISTS Item_General_Trajectory(
+	worldId TEXT,
 	itemId TEXT,
 	objectType TEXT,
 	color TEXT,
@@ -263,6 +265,7 @@ def create_or_insert_general_trajectory(conn, item_id, object_type, color, postg
 	conn.commit()
 	#Creating table with the first item
 	create_bboxes_sql ='''CREATE TABLE IF NOT EXISTS General_Bbox(
+	worldId TEXT,
 	itemId TEXT,
 	trajBbox stbox,
 	FOREIGN KEY(itemId)
@@ -273,20 +276,20 @@ def create_or_insert_general_trajectory(conn, item_id, object_type, color, postg
 	cursor.execute("CREATE INDEX IF NOT EXISTS traj_bbox_idx ON General_Bbox USING GiST(trajBbox);")
 	conn.commit()
 	#Insert the trajectory of the first item
-	insert_general_trajectory(conn, item_id, object_type, color, postgres_timestamps, bboxes, pairs)
+	insert_general_trajectory(conn, item_id, object_type, color, postgres_timestamps, bboxes, pairs, worldId)
 
 
 # Insert general trajectory
-def insert_general_trajectory(conn, item_id, object_type, color, postgres_timestamps, bboxes, pairs):
+def insert_general_trajectory(conn, item_id, object_type, color, postgres_timestamps, bboxes, pairs, worldId):
 	#Creating a cursor object using the cursor() method
 	cursor = conn.cursor()
 	#Inserting bboxes into Bbox table
 	insert_bbox_trajectory = ""
-	insert_format = "INSERT INTO General_Bbox (itemId, trajBbox) "+ \
-	"VALUES (\'%s\',"  % (item_id)
+	insert_format = "INSERT INTO General_Bbox (worldId, itemId, trajBbox) "+ \
+	"VALUES (\'%s\', \'%s\', "  % (worldId, item_id)
 	# Insert the item_trajectory separately
-	insert_trajectory = "INSERT INTO Item_General_Trajectory (itemId, objectType, color, trajCentroids, largestBbox) "+ \
-	"VALUES (\'%s\', \'%s\', \'%s\', "  % (item_id, object_type, color)
+	insert_trajectory = "INSERT INTO Item_General_Trajectory (worldId, itemId, objectType, color, trajCentroids, largestBbox) "+ \
+	"VALUES (\'%s\', \'%s\', \'%s\', \'%s\', "  % (worldId, item_id, object_type, color)
 	traj_centroids = "\'{"
 	min_ltx, min_lty, min_ltz, max_brx, max_bry, max_brz = float('inf'), float('inf'), float('inf'), float('-inf'), float('-inf'), float('-inf')
 	# max_ltx, max_lty, max_ltz, min_brx, min_bry, min_brz = float('-inf'), float('-inf'), float('-inf'), float('inf'), float('inf'), float('inf')

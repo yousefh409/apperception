@@ -42,6 +42,8 @@ class VideoContextExecutor:
         return camera_sql
 
     def visit_obj_rec(self, camera_node, object_rec_node):
+        # TODO: add world id into row
+
         cam_id = camera_node.cam_id
         lens = camera_node.lens
         video_file = camera_node.video_file
@@ -54,7 +56,7 @@ class VideoContextExecutor:
 
         
         tracking_results = recognize(video_file, algo, tracker_type, tracker)
-        add_recognized_objs(self.conn, lens, tracking_results, start_time)
+        add_recognized_objs(self.conn, lens, tracking_results, start_time, self.current_context.get_name())
         if self.tasm:
             metadata_to_tasm(tracking_results, camera_node.metadata_id, self.tasm)
         
