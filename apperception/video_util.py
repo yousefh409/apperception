@@ -94,13 +94,15 @@ def get_video_roi(file_name, cam_video_file, rois, times):
 	vid_writer.release()
 
 def create_or_insert_world_table(conn, name, units):
+	# TODO: unique world id
+	
 	#Creating a cursor object using the cursor() method
 	cursor = conn.cursor()
 	'''
 	Create and Populate A world table with the given world object.
 	'''
 	#Doping Worlds table if already exists. TODO: For testing purpose only
-	cursor.execute("DROP TABLE IF EXISTS Worlds;")
+	# cursor.execute("DROP TABLE IF EXISTS Worlds;")
 	#Creating table with the first world
 	sql = '''CREATE TABLE IF NOT EXISTS Worlds(
 	worldId TEXT PRIMARY KEY,
@@ -130,7 +132,7 @@ def create_or_insert_camera_table(conn, world_name, camera):
 	Create and Populate A camera table with the given camera object.
 	'''
 	#Doping Cameras table if already exists. TODO: For testing purpose only
-	cursor.execute("DROP TABLE IF EXISTS Cameras")
+	# cursor.execute("DROP TABLE IF EXISTS Cameras")
 	#Creating table with the first camera
 	sql = '''CREATE TABLE IF NOT EXISTS Cameras(
 	cameraId TEXT,
